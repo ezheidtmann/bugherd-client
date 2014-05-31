@@ -1,0 +1,22 @@
+{
+  "name": "bugherd-client",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "tape tests/*.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "tape": "^2.13.1"
+  },
+  "dependencies": {
+    "rest": "^1.1.0",
+    "rest-throttler": "git://github.com/ezheidtmann/rest-throttler.git#master",
+    "when": "^3.2.2"
+  }
+}
