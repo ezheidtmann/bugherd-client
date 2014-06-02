@@ -63,18 +63,34 @@ var bh_depaginator = interceptor({
   }
 });
 
+/**
+ * Transform "invalid api key" errors to 401 so we don't try to retry.
+ */
+var bh_keychecker = interceptor({
+  response: function(response, config) {
+    if (response.entity.error && response.entity.error == 'invalid api key') {
+      response.status.code = 401;
+    }
+    return response;
+  }
+});
 
 var throttler_config = { limit: throttler.limit(3000) };
 var rate_limited_request = rest
   // Decode JSON automatically
   .wrap(require('rest/interceptor/mime'))
+  .wrap(bh_keychecker)
+  // Mark 402+ response codes as errors (401 indicates bad credentials, so we
+  // shouldn't retry those requests.)
+  .wrap(require('rest/interceptor/errorCode'), { code: 402 })
   // Backoff 4 seconds if receive an error
   .wrap(require('rest/interceptor/retry'), { initial: 4e3 })
+  // Mark all 400+ responses as errors (after retrying 403 codes)
+  .wrap(require('rest/interceptor/errorCode'), { code: 400 })
   // timeout after 2 minutes
   .wrap(require('rest/interceptor/timeout'), { timeout: 120e3 })
   // Use our API key
   .wrap(require('rest/interceptor/basicAuth'), auth)
-  .wrap(require('rest/interceptor/errorCode'))
   // Always wait between requests (3 seconds per BH api)
   .wrap(throttler, throttler_config)
   .chain(bh_depaginator, {})
