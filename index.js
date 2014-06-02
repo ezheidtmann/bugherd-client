@@ -1,7 +1,6 @@
 var _ = require('underscore')
   , rest = require('rest')
   , throttler = require('rest-throttler')
-  , async = require('async')
   , qs = require('querystring')
   , url = require('url')
   , interceptor = require('rest/interceptor')

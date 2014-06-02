@@ -17,6 +17,7 @@
   "dependencies": {
     "rest": "^1.1.0",
     "rest-throttler": "git://github.com/ezheidtmann/rest-throttler.git#master",
+    "underscore": "^1.6.0",
     "when": "^3.2.2"
   }
 }
