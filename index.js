@@ -18,13 +18,13 @@ var auth = {
 var bh_depaginator = interceptor({
   init: function(config) {
     config.per_page = config.per_page || 100;
-    return config;  
+    return config;
   }
  ,success: function(response, config, meta) {
     var result = response.entity
       , request = response.request
       ;
-    
+
     // depagination: if it has a "meta.count", it is a candidate for
     // depagination. If we can figure out the data key and the count of actual
     // data elements differs from "meta.count", then we submit more requests
@@ -78,11 +78,13 @@ var bh_keychecker = interceptor({
 var throttler_config = { limit: throttler.limit(3000) };
 var rate_limited_request = rest
   // Decode JSON automatically
-  .wrap(require('rest/interceptor/mime'))
+  .wrap(require('rest/interceptor/mime'), { mime: 'application/json' })
   .wrap(bh_keychecker)
   // Mark 402+ response codes as errors (401 indicates bad credentials, so we
   // shouldn't retry those requests.)
-  .wrap(require('rest/interceptor/errorCode'), { code: 402 })
+  //
+  // TODO: re-enable this after handling the "invalid event name" error.
+  //.wrap(require('rest/interceptor/errorCode'), { code: 402 })
   // Backoff 4 seconds if receive an error
   .wrap(require('rest/interceptor/retry'), { initial: 4e3 })
   // Mark all 400+ responses as errors (after retrying 403 codes)
@@ -113,7 +115,23 @@ function bh_get(path, args) {
     should_depaginate = false;
     // TODO: use this in the depaginator
   }
-  return rate_limited_request(url.format(uri)).then(function(response) {
+
+  return bh_req(url.format(uri));
+}
+
+function bh_post(path, body) {
+  var uri = 'https://www.bugherd.com/api_v2/' + path + '.json';
+
+  var req = {
+    path: uri
+   ,entity: body
+  };
+
+  return bh_req(req);
+}
+
+function bh_req(req) {
+  return rate_limited_request(req).then(function(response) {
     return response.entity;
   })
   .catch(function(response) {
@@ -123,11 +141,11 @@ function bh_get(path, args) {
     }
     throw new Error('API Error: '+ msg);
   });
-  // TODO: add error handler
 }
 
 module.exports = {
   get: bh_get
+ ,post: bh_post
  ,auth: auth
  ,setKey: function(key) { auth.username = key; }
  ,depaginator: bh_depaginator
