@@ -63,31 +63,15 @@ var bh_depaginator = interceptor({
   }
 });
 
-/**
- * Transform "invalid api key" errors to 401 so we don't try to retry.
- */
-var bh_keychecker = interceptor({
-  response: function(response, config) {
-    if (response.entity.error && response.entity.error == 'invalid api key') {
-      response.status.code = 401;
-    }
-    return response;
-  }
-});
-
 var throttler_config = { limit: throttler.limit(3000) };
 var rate_limited_request = rest
   // Decode JSON automatically
   .wrap(require('rest/interceptor/mime'), { mime: 'application/json' })
-  .wrap(bh_keychecker)
-  // Mark 402+ response codes as errors (401 indicates bad credentials, so we
-  // shouldn't retry those requests.)
-  //
-  // TODO: re-enable this after handling the "invalid event name" error.
-  //.wrap(require('rest/interceptor/errorCode'), { code: 402 })
+  // Mark 429 ("rate limit exceeded") as errors so we can back off and retry.
+  .wrap(require('rest/interceptor/errorCode'), { code: 429 })
   // Backoff 4 seconds if receive an error
   .wrap(require('rest/interceptor/retry'), { initial: 4e3 })
-  // Mark all 400+ responses as errors (after retrying 403 codes)
+  // Mark all 400+ responses as errors (after retrying)
   .wrap(require('rest/interceptor/errorCode'), { code: 400 })
   // timeout after 2 minutes
   .wrap(require('rest/interceptor/timeout'), { timeout: 120e3 })
@@ -101,9 +85,14 @@ var rate_limited_request = rest
 /**
  * Get something from the Bugherd API
  *
- * @param path Partial API path, after "/api_v2" and before ".json". Required
+ * @param path Partial API path, after "/api_v2" and before ".json". Required.
  * @param args Optional querystring arguments, as object.
- * @param cb Callback; called with API results object or null.
+ *
+ * @returns Promise
+ * @resolves with response body
+ * @rejects with Error('API Error:' + ...);
+ *
+ * @see bh_req()
  */
 function bh_get(path, args) {
   var uri = 'https://www.bugherd.com/api_v2/' + path + '.json';
@@ -119,6 +108,18 @@ function bh_get(path, args) {
   return bh_req(url.format(uri));
 }
 
+/**
+ * Post something to the Bugherd API
+ *
+ * @param path Partial API path, after "/api_v2" and before ".json". Required.
+ * @param body POST request body, will be sent as JSON.
+ *
+ * @returns Promise
+ * @resolves with response body
+ * @rejects with Error('API Error:' + ...);
+ *
+ * @see bh_req()
+ */
 function bh_post(path, body) {
   var uri = 'https://www.bugherd.com/api_v2/' + path + '.json';
 
