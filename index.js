@@ -120,15 +120,25 @@ function bh_get(path, args) {
  *
  * @see bh_req()
  */
-function bh_post(path, body) {
+function bh_post(path, body, method) {
+  method = method || 'POST';
+
   var uri = 'https://www.bugherd.com/api_v2/' + path + '.json';
 
   var req = {
     path: uri
    ,entity: body
+   ,method: method
   };
 
   return bh_req(req);
+}
+
+/**
+ * PUT something to the Bugherd API
+ */
+function bh_put(path, body) {
+  bh_post(path, body, 'PUT');
 }
 
 function bh_req(req) {
@@ -147,6 +157,7 @@ function bh_req(req) {
 module.exports = {
   get: bh_get
  ,post: bh_post
+ ,put: bh_put
  ,auth: auth
  ,setKey: function(key) { auth.username = key; }
  ,depaginator: bh_depaginator
